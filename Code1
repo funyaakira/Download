@@ -1,0 +1,70 @@
+# coding:utf-8
+
+import json
+import urllib,urllib2,cookielib
+import ast
+import sys, codecs
+
+sys.stdout = codecs.getwriter("utf-8")(sys.stdout) # 標準出力をUTF8にする
+
+userid = "" # ニコニコのユーザID
+passwd = ""      # ニコニコのパスワード
+downloadDir = u"C:\\Down"        # ダウンロードディレクトリ
+
+# とりあえずニコニコにログインしておく
+opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.CookieJar()))
+urllib2.install_opener(opener)
+urllib2.urlopen("https://secure.nicovideo.jp/secure/login",
+                        urllib.urlencode({"mail":userid,"password":passwd}))
+
+data = {
+  "query":"Shakey",
+  "service":[
+    "video"
+  ],
+  "search":[
+    "tags"
+  ],
+  "join":[
+    "cmsid",
+    "title",
+    "view_counter"
+  ],
+  "from":0,
+  "size":100,
+  "sort_by":"view_counter",
+  "issuer": "your service/application name"
+}
+
+req = urllib2.Request("http://api.search.nicovideo.jp/api/snapshot/")
+req.add_header('Content-Type', 'application/json')
+
+response = urllib2.urlopen(req, json.dumps(data))
+c1 = response.read()
+c2 = ast.literal_eval(c1.splitlines()[0])
+
+for num in range(len(c2['values'])):
+    title = c2['values'][num]['title']
+    smid = c2['values'][num]['cmsid']
+
+    print unicode(title, "UTF-8")
+
+    urllib2.urlopen("http://www.nicovideo.jp/watch/" + smid)
+
+    response = urllib2.urlopen("http://www.nicovideo.jp/api/getflv?v=" + smid);
+    movieData = response.read()
+    movieDataList = movieData.split('&')
+    movieURL = movieDataList[2].split('=')[1]
+    movieURL = urllib.unquote(movieURL)
+
+    movieObj = urllib2.urlopen(movieURL)
+
+    downFileName = downloadDir + '\\' + unicode(title, "UTF-8") + '.mp4'
+
+    print downFileName
+
+    with open(downFileName,'wb') as output:
+        output.write(movieObj.read())
+        output.close()
+
+print "Done"
